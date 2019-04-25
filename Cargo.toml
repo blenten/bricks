@@ -1,0 +1,8 @@
+[package]
+name = "bricks"
+version = "0.1.0"
+authors = ["blindir <bl.man.ten@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+postgres = "0.15"
