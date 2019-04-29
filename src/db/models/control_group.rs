@@ -1,21 +1,21 @@
 use super::{DbTable, InputRowData, pgdb};
 
 
-pub struct TestIn {}
-impl TestIn {
+pub struct ControlGroup {}
+impl ControlGroup {
 	pub fn name() -> &'static str {
-		"test_in"
+		"control_group"
 	}
 }
 
 
-impl DbTable for TestIn {
-	type TableItem = TestInItem;
+impl DbTable for ControlGroup {
+	type TableItem = ControlGroupItem;
 
 	fn select() -> Vec<Self::TableItem> {
 		let mut result: Vec<Self::TableItem> = Vec::new();
-		for row in pgdb::select_all(TestIn::name()).into_iter() {
-			result.push(TestInItem {
+		for row in pgdb::select_all(ControlGroup::name()).into_iter() {
+			result.push(ControlGroupItem {
 				cn: row.get(6),
 				util: row.get(1),
 				sprav: row.get(2),
@@ -27,16 +27,16 @@ impl DbTable for TestIn {
 		result
 	}
 
-	fn push(items: Vec<Self::TableItem>){
+	fn push(items: Vec<Self::TableItem>) {
 		for chunk in items.as_slice().chunks(10000) {
-			pgdb::copy_in(TestIn::name(), chunk);
+			pgdb::copy_in(ControlGroup::name(), chunk);
 		}
 	}
 }
 
 
 #[derive(Debug)]
-pub struct TestInItem {
+pub struct ControlGroupItem {
 	cn: String,
 	util: String,
 	sprav: String,
@@ -45,7 +45,7 @@ pub struct TestInItem {
 	v2: String,
 }
 
-impl  InputRowData for TestInItem {
+impl  InputRowData for ControlGroupItem {
 	fn keystring(&self) -> String {
 		self.util.clone() + &self.v1
 	}
@@ -55,7 +55,7 @@ impl  InputRowData for TestInItem {
 	}
 }
 
-impl pgdb::CopyFrom for TestInItem {
+impl pgdb::CopyFrom for ControlGroupItem {
 	fn to_cpfmt(&self) -> String {
 		format!("{}\t{}\t{}\t{}\t{}\t{}\n", 
 			self.util,
