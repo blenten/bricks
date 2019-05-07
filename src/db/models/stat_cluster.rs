@@ -1,6 +1,6 @@
 use super::{DbTable, pgdb};
 
-pub struct StatCluster {}
+pub struct StatCluster;
 impl StatCluster {
 	pub fn name() -> &'static str {
 		"stat_cluster"
@@ -29,7 +29,7 @@ impl DbTable for StatCluster {
 		result
 	}
 
-	fn push(items: Vec<Self::TableItem>) {
+	fn push(_items: Vec<Self::TableItem>) {
 		unimplemented!()
 	}
 }

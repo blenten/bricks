@@ -1,6 +1,6 @@
 use super::{DbTable, pgdb};
 
-pub struct StatRecord {}
+pub struct StatRecord;
 impl StatRecord {
 	pub fn name() -> &'static str {
 		"stat_record"

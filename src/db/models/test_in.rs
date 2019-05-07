@@ -1,7 +1,7 @@
 use super::{DbTable, InputRowData, pgdb};
 
 
-pub struct TestIn {}
+pub struct TestIn;
 impl TestIn {
 	pub fn name() -> &'static str {
 		"test_in"

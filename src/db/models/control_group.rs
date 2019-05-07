@@ -1,7 +1,7 @@
 use super::{DbTable, InputRowData, pgdb};
 
 
-pub struct ControlGroup {}
+pub struct ControlGroup;
 impl ControlGroup {
 	pub fn name() -> &'static str {
 		"control_group"

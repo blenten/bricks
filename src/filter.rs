@@ -1,30 +1,26 @@
 pub fn filter_keystring(keystr: String) -> Vec<String> {
 	let mut ommbuf = String::with_capacity(50);
 	let mut result = vec![String::with_capacity(20)];
-	let mut word = &mut result[0];
+	let mut word_id = 0;
 	for c in keystr.to_lowercase().chars().filter(|x| {x.is_alphabetic() || *x == ' '}) {
 		if c != ' ' {
-			word.push(c);
+			result[word_id].push(c);
 		} else {
-			if word.as_str() == "не" {
+			if result[word_id].as_str() == "не" {
 				continue;
 			}
 
 			if !ommbuf.is_empty() {
 				ommbuf.push(' ');
 			}
-			ommbuf.push_str(&word);
-
+			ommbuf.push_str(&result[word_id]);
 			if !OMMITS.contains(&ommbuf.as_str()) {
-				word.shrink_to_fit();
+				result[word_id].shrink_to_fit();
 				result.push(String::with_capacity(20));
-				word = match result.last_mut() {
-					Some(w) => w,
-					None => panic!("Unexpected error in filter!\n\tresult is empty on non-zero iteration"),
-				};
+				word_id += 1;
 				ommbuf.clear();
 			}
-			word.clear();
+			result[word_id].clear();
 		}
 	}
 	result
@@ -39,7 +35,7 @@ mod tests {
 	fn filter_keystr_tst() {
 		let input = String::from("Под прудовое&6 хозя1йство Для размещения объектов в виде рыбного### хозяйства");
 		let res = vec!["прудовое", "хозяйство", "размещения", "объектов", "рыбного", "хозяйства"];
-		assert_eq!(res, filter_keystring(input));
+		assert_eq!(filter_keystring(input), res);
 	}
 }
 

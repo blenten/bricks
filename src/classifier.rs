@@ -1,11 +1,6 @@
 use std::collections::HashMap;
 
 
-pub trait Stats {
-	fn as_stats_data(&self) -> Vec<StatsData>;
-}
-
-
 #[derive(Debug)]
 pub struct Statistics {
 	kw_cl_matches: HashMap<(String, String), u64>,

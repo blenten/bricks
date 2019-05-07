@@ -1,7 +1,5 @@
 extern crate postgres;
-
-use postgres::{Connection, TlsMode};
-use postgres::rows::Rows;
+use self::postgres::{Connection, TlsMode, rows::Rows};
 
 pub trait CopyFrom {
 	fn to_cpfmt(&self) -> String;
