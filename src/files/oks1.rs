@@ -28,12 +28,12 @@ pub fn from_csv(filename: &str) ->  Vec<RowOKS1> {
 
 #[derive(Debug)]
 pub struct RowOKS1 {
-	name: String,
-	sprname: String,
-	area: String,
-	year: String,
-	material: String,
-	levels: String,
-	cn: String,
-	class: String,
+	pub name: String,
+	pub sprname: String,
+	pub area: String,
+	pub year: String,
+	pub material: String,
+	pub levels: String,
+	pub cn: String,
+	pub class: String,
 }
