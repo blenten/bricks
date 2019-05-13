@@ -1,6 +1,5 @@
 extern crate postgres;
 use self::postgres::{Connection, TlsMode, rows::Rows};
-use super::models::TableRow;
 
 
 pub fn connect() -> Connection {
@@ -14,11 +13,9 @@ pub fn select_all(tname: &str) -> Rows {
 	conn.query(cmd.as_str(), &[]).unwrap()
 }
 
-pub fn copy_in(tname: &str, fields: &str, items: Vec<TableRow>) -> u64 {
-	let cpstr: String = items.into_iter().map(|x| {x.to_cpstr()}).collect();
-
+pub fn copy_in(tname: &str, fields: &[&str], cpstr: String) -> u64 {
 	let conn = connect();
-	let cmd = format!("COPY {} {} FROM STDIN", tname, fields);
+	let cmd = format!("COPY {} {} FROM STDIN", tname, fields.join(", "));
 	let stmt = conn.prepare(cmd.as_str()).unwrap();
 	
 	stmt.copy_in(&[], &mut cpstr.as_bytes()).unwrap()

@@ -1,9 +1,9 @@
 use super::{DbTable, ControlGroup, TableRow};
 
 
-pub struct TestIn;
+pub struct OksIn;
 
-impl DbTable for TestIn {
+impl DbTable for OksIn {
 
 	fn name() -> &'static str {
 		"test_in"
@@ -18,17 +18,9 @@ impl DbTable for TestIn {
 	// }
 }
 
-impl ControlGroup for TestIn {
+impl ControlGroup for OksIn {
 
 	fn cgroup() -> &'static str {
-		"test_in_control"
-	}
-
-	fn select_cg() -> Vec<TableRow> {
-		unimplemented!()
-	}
-
-	fn push_cg(items: Vec<TableRow>) {
-		unimplemented!()
+		"oks_in_cgroup"
 	}
 }
