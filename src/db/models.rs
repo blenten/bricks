@@ -1,33 +1,77 @@
 use std::collections::HashMap;
-use std::cmp::min;
 use super::pgdb;
 
-pub mod oks_in;
-pub mod stat_record;
-pub mod stat_cluster;
 
-pub use self::{
-	oks_in::OksIn,
-	stat_record::StatRecord,
-	stat_cluster::StatCluster,
-};
+pub fn from_name(tname: &str) -> Result<DbTable, String>{
+	match tname {
+		"oks_in" => Ok(DbTable::new("oks_in", Model::OksIn)),
+		"stat_record" => Ok(DbTable::new("stat_record", Model::StatRecord)),
+		"stat_cluster" => Ok(DbTable::new("stat_cluster", Model::StatCluster)),
+		"load_in" => Ok(DbTable::new("load_in", Model::LoadIn)),
+		x => Err(format!("No table named: {}", x))
+	}
+}
 
+pub struct DbTable {
+	name: &'static str,
+	model: Model,
+}
+impl DbTable {
 
-pub trait DbTable {
-	fn name() -> &'static str;
-	fn fields() -> &'static [&'static str];
-	// fn fields_number() -> usize;
-
-	fn select() -> Vec<TableRow> {
-		select(Self::name(), Self::fields())		
+	fn new(name: &'static str, model: Model) -> DbTable {
+		DbTable {name, model}
 	}
 
-	fn push(rows: Vec<TableRow>) -> u64 {
-		push(Self::name(), Self::fields(), rows)
+	pub fn name(&self) -> &str {
+		self.name
 	}
 
-	fn newrow(values: Vec<String>) -> Result<TableRow, String> {
-		let fnames = Self::fields().to_vec();
+	pub fn fields(&self) -> &'static [&'static str] {
+		self.model.fields()
+	}
+
+	pub fn select(&self) -> Vec<TableRow> {
+		let fnames = self.model.fields().to_vec();
+		let rows = pgdb::select_all(self.name);
+		let mut result: Vec<TableRow> = Vec::with_capacity(rows.len());
+
+		for row in rows.into_iter() {
+			let mut fields: HashMap<&'static str, String> = HashMap::with_capacity(fnames.len());
+			let mut cpstr = String::new();
+			for i in 1..row.len() {
+				let item: String = row.get(i);
+				cpstr += &item;
+				if i == row.len() - 1 {
+					cpstr.push('\n')
+				}else {
+					cpstr.push('\t')
+				}
+				fields.insert(fnames.get(i).unwrap(), item);
+			}
+			result.push(TableRow {
+				cpstr,
+				fields,
+				rowlen: fnames.len(),
+			})
+		}
+		result		
+	}
+
+	pub fn push(&self, rows: Vec<TableRow>) -> Result<u64, String> {
+		if rows.is_empty() {
+			return Ok(0)
+		}
+		if rows[0].rowlen != self.model.fields().len() {
+			return Err(format!("Table model is incompatible with the row:\n\t{:?}\n\t{:?}",
+				self.model.fields(),
+				rows[0].fields))
+		}
+
+		Ok(self.model.method().push(self.name, self.model.fields(), rows))
+	}
+
+	pub fn newrow(&self, values: Vec<String>) -> Result<TableRow, String> {
+		let fnames = self.model.fields().to_vec();
 		if fnames.len() != values.len() {
 			return Err(format!("Wrong number of values. Expected {}, got {}", 
 				fnames.len(), values.len()));
@@ -41,15 +85,47 @@ pub trait DbTable {
 	}
 }
 
-pub trait ControlGroup: DbTable {
-	fn cgroup() -> &'static str;
 
-	fn select_cg() -> Vec<TableRow> {
-		select(Self::cgroup(), Self::fields())
+enum Model {
+	OksIn,
+	LoadIn,
+	StatRecord,
+	StatCluster,
+}
+impl Model {
+	fn fields(&self) -> &'static [&'static str] {
+		use Model::*;
+		match self {
+			OksIn => &["name", "sprav", "area", "year", "material", "levels", "cn", "class"],
+			LoadIn => &["cn", "object_name", "name"],
+			StatRecord => &["kword", "class", "matches", "cluster_id"],
+			StatCluster => &["size"],
+		}
 	}
 
-	fn push_cg(rows: Vec<TableRow>) -> u64 {
-		push(Self::cgroup(), Self::fields(), rows)
+	fn method(&self) -> InsertMethod {
+		use Model::*;
+		match self {
+			OksIn => InsertMethod::CopyIn,
+			LoadIn => InsertMethod::CopyIn,
+			StatRecord => InsertMethod::CopyIn,
+			StatCluster => InsertMethod::InsertOne,
+		}
+	}
+}
+
+
+enum InsertMethod {
+	CopyIn,
+	InsertOne,
+}
+impl InsertMethod {
+	fn push(&self, tname: &str, tfields: &[&'static str], mut rows: Vec<TableRow>) -> u64 {
+		use InsertMethod::*;
+		match self {
+			CopyIn => pgdb::copy_in(tname, tfields, rows),
+			InsertOne => pgdb::insert_one(tname, tfields,rows.remove(0)),
+		}
 	}
 }
 
@@ -62,8 +138,9 @@ pub struct TableRow {
 }
 
 impl TableRow {
-	pub fn get(&self, field_name: &str) -> Option<&String> {
+	pub fn get(&self, field_name: &str) -> Result<&String, String> {
 		self.fields.get(field_name)
+			.ok_or(format!("No field '{}' found\n\t{:?}", field_name, self.fields))
 	}
 
 	pub fn len(&self) -> usize {
@@ -76,73 +153,30 @@ impl TableRow {
 }
 
 
-fn select(tname: &str, fields: &[&'static str]) -> Vec<TableRow> {
-	let fnames = fields.to_vec();
-	let rows = pgdb::select_all(tname);
-	let mut result: Vec<TableRow> = Vec::with_capacity(rows.len());
-
-	for row in rows.into_iter() {
-		let mut fields: HashMap<&'static str, String> = HashMap::with_capacity(fnames.len());
-		let mut cpstr = String::new();
-		for i in 1..row.len() {
-			let item: String = row.get(i);
-			cpstr += &item;
-			fields.insert(fnames.get(i).unwrap(), item);
-		}
-		result.push(TableRow {
-			cpstr,
-			fields,
-			rowlen: fnames.len(),
-		})
-	}
-	result
-}
-
-fn push(tname: &str, fields: &[&'static str], mut rows: Vec<TableRow>) -> u64 {
-	let mut rownum = 0;
-	while !rows.is_empty() {
-		let cpstr = rows.drain(..min(10_000, rows.len())).map(|x| {x.to_cpstr()}).collect();
-		rownum += pgdb::copy_in(tname, fields, cpstr);
-	}
-	rownum
-}
-
 
 
 #[cfg(test)]
 mod tests {
 	use super::*;
 
-	struct TestTable;
-	impl DbTable for TestTable {
-		fn name() -> &'static str {
-			"test_table"
-		}
-
-		fn fields() -> &'static [&'static str] {
-			&["field1", "field2", "field3"]
-		}
-
-		// fn fields_number() -> usize {
-		// 	3
-		// }
-
-		fn select() -> Vec<TableRow> {unimplemented!()}
-		fn push(_rows: Vec<TableRow>) -> u64{unimplemented!()}
-	}
-
 	#[test]
-	fn newrow_tst() {
-		let row = TestTable::newrow(vec!["value1".to_string(), 
-			"value2".to_string(), "value3".to_string(),]).unwrap();
+	fn newrow_oks() {
+		let table = DbTable::new("t1", Model::OksIn);
+		let vals: Vec<String> = table.fields()
+			.iter()
+			.enumerate()
+			.map(|(i, _)| {format!("value{}", i+1)})
+			.collect();
+		let res_fields: HashMap<&'static str, String> = table.fields().to_vec()
+			.into_iter()
+			.zip(vals.clone())
+			.collect();
 
-		let mut res_fields: HashMap<&'static str, String> = HashMap::new();
-		res_fields.insert("field1", "value1".to_string());
-		res_fields.insert("field2", "value2".to_string());
-		res_fields.insert("field3", "value3".to_string());
+		let row = table.newrow(vals).unwrap();
 
-		assert_eq!(row.cpstr, "value1\tvalue2\tvalue3\n".to_string());
-		assert_eq!(row.rowlen, 3usize);
+		assert_eq!(row.cpstr, 
+			"value1\tvalue2\tvalue3\tvalue4\tvalue5\tvalue6\tvalue7\tvalue8\n".to_string());
+		assert_eq!(row.rowlen, 8usize);
 		assert_eq!(row.fields, res_fields);
 	}
 }

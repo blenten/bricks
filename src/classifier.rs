@@ -25,6 +25,20 @@ impl Statistics {
 		*clm += data.matches;
 		self.samples += data.matches;
 	}
+
+	pub fn add_datavec(&mut self, data: Vec<StatsData>) {
+		for stdata in data {
+			self.add_data(stdata);
+		}
+	}
+
+	pub fn to_strec(self) -> Vec<Vec<String>> {
+		let mut result: Vec<Vec<String>> = Vec::new();
+		for (k, v) in self.kw_cl_matches.into_iter() {
+			result.push(vec![k.0, k.1, v.to_string()]);
+		}
+		result
+	}
 }
 
 
@@ -49,7 +63,7 @@ pub struct Probs {
 	p_cl: HashMap<String, f64>
 }
 impl Probs {
-	pub fn from_stats(stats: &Statistics) -> Probs {
+	pub fn from_stats(stats: Statistics) -> Probs {
 		let p_match = stats.kw_cl_matches.iter()
 			.map(|i| {
 			let (k, v) = (i.0, i.1);
@@ -134,6 +148,25 @@ mod tests {
 	}
 
 	#[test]
+	fn stats_to_strec() {
+		let mut stats = Statistics::new();
+
+		stats.add_data(StatsData::new("kword1", "class1", 100));
+		stats.add_data(StatsData::new("kword2", "class2", 200));
+		stats.add_data(StatsData::new("kword3", "class3", 300));
+
+		let res = stats.to_strec();
+
+		assert_eq!(res.len(), 3);
+		assert!(res.contains(
+			&vec!["kword1".to_string(), "class1".to_string(), "100".to_string()]));
+		assert!(res.contains(
+			&vec!["kword2".to_string(), "class2".to_string(), "200".to_string()]));
+		assert!(res.contains(
+			&vec!["kword3".to_string(), "class3".to_string(), "300".to_string()]));
+	}
+
+	#[test]
 	fn probs_from_stats() {
 		let mut stats = Statistics::new();
 		stats.add_data(StatsData::new("kw1", "cl1", 1));
@@ -141,7 +174,7 @@ mod tests {
 		stats.add_data(StatsData::new("kw1", "cl2", 2));
 		stats.add_data(StatsData::new("kw2", "cl2", 1));
 		
-		let probs = Probs::from_stats(&stats);
+		let probs = Probs::from_stats(stats);
 
 		assert_eq!(
 			*probs.p_cl.get("cl1").unwrap(),
@@ -172,7 +205,7 @@ mod tests {
 		stats.add_data(StatsData::new("kw1", "cl2", 2));
 		stats.add_data(StatsData::new("kw2", "cl2", 1));
 		
-		let probs = Probs::from_stats(&stats);
+		let probs = Probs::from_stats(stats);
 
 		let input1 = vec!["kw2".to_string(), "kw1".to_string()];
 		let input2 = vec!["kw1".to_string()];

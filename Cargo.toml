@@ -4,6 +4,4 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-csv = "1"
 postgres = "0.15"
-clap = "~2.27.0"
